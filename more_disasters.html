@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>More Disasters - Disaster Info Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+  <!-- Header -->
+  <header class="bg-blue-600 text-white p-5 shadow-md">
+    <h1 class="text-3xl font-bold text-center">🌍 More Natural Disasters</h1>
+    <p class="text-center mt-2 text-blue-200">Explore more disasters & safety measures</p>
+  </header>
+
+<!-- Search Engine-->  
+  <div class="p-5 max-w-4xl mx-auto">
+    <input type="text" id="searchInput" placeholder="🔍 Search disasters..."
+      class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none">
+  </div>  
+
+  <!-- Disaster Cards -->
+  <div id="disasterGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-6 max-w-6xl mx-auto">
+
+   <!-- Landslide Card -->
+    <div class="bg-white rounded-2xl shadow-lg p-5 hover:shadow-2xl transition cursor-pointer">
+      <img src="Landslides.jpg"   
+           alt="Landslide" class="w-full h-40 object-cover rounded-xl">
+      <h2 class="text-xl font-semibold mt-4">Landslides</h2>
+      <p class="text-gray-600 mt-2 text-sm">
+        Landslides occur when rocks, soil, and debris slide down slopes, often due to heavy rain or earthquakes.
+      </p>
+      <button type="button"
+      onclick="window.location.href='landslide.html'"
+       class="mt-4 w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600">Learn More</button>
+    </div>
+    <!-- Tsunami Card -->
+    <div class="bg-white rounded-2xl shadow-lg p-5 hover:shadow-2xl transition cursor-pointer">
+      <img src="Tsunami.jpg"   
+           alt="Tsunami" class="w-full h-40 object-cover rounded-xl">
+      <h2 class="text-xl font-semibold mt-4">Tsunamis</h2>
+      <p class="text-gray-600 mt-2 text-sm">
+        Tsunamis are giant ocean waves caused by underwater earthquakes or volcanic eruptions, leading to coastal flooding.
+      </p>
+     <button type="button"
+      onclick="window.location.href='tsunami.html'"
+       class="mt-4 w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600">Learn More</button>
+    </div>
+    <!-- Cyclone Card -->
+    <div class="bg-white rounded-2xl shadow-lg p-5 hover:shadow-2xl transition cursor-pointer">
+      <img src="Cyclone.jpg" 
+           alt="Cyclone" class="w-full h-40 object-cover rounded-xl">   
+      <h2 class="text-xl font-semibold mt-4">Cyclones</h2>
+      <p class="text-gray-600 mt-2 text-sm">
+        Cyclones are powerful rotating storms with strong winds and heavy rains, often affecting coastal regions.
+      </p>
+      <a href="Cyclone.html">
+        <button class="mt-4 w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600">Learn More</button>  
+      </a>
+    </div>
+
+  </div>
+
+  <!-- Back Button -->
+  <div class="text-center mt-8 mb-10">
+    <a href="info.html"   
+       class="inline-flex items-center bg-blue-600 text-white px-6 py-3 rounded-full shadow-md hover:bg-blue-700 transition">
+      ⬅️ Back
+    </a>
+  </div>
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-gray-300 text-center p-5 mt-10">
+    <p>© 2025 Disaster Info Hub | Designed for Awareness</p>
+  </footer>
+<!-- Search Script -->
+  <script>
+    const searchInput = document.getElementById("searchInput");
+    const disasterGrid = document.getElementById("disasterGrid").children;
+
+    searchInput.addEventListener("keyup", function() {
+      let filter = searchInput.value.toLowerCase();
+      Array.from(disasterGrid).forEach(card => {
+        let text = card.innerText.toLowerCase();
+        card.style.display = text.includes(filter) ? "block" : "none";
+      });
+    });
+  </script>     
+
+</body>
+</html>  

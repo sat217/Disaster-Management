@@ -1,0 +1,386 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>DisasterEdu — Student Quiz Portal</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f6f8fb; --panel:#ffffff; --muted:#6b7280; --ink:#0f172a;
+      --accent:#0ea5a4; --accent-2:#06b6d4; --radius:12px; --shadow:0 10px 30px rgba(6,15,20,0.06);
+      --max-w:1100px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Arial,sans-serif;background:linear-gradient(180deg,var(--bg),#eef2f7);color:var(--ink)}
+    .container{max-width:var(--max-w);margin:20px auto;padding:18px;display:grid;grid-template-columns:1fr 360px;gap:18px}
+    main{min-height:calc(100vh - 60px)}
+    header{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .logo{display:flex;gap:12px;align-items:center}
+    .logo .box{width:46px;height:46px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;color:#fff;font-weight:800}
+    .card{background:var(--panel);border-radius:12px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px}
+    .grid-cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+    .quiz-card{padding:12px;border-radius:10px;background:linear-gradient(180deg,#fff,#fbffff);box-shadow:0 6px 18px rgba(6,15,20,0.03);transition:transform .16s}
+    .quiz-card:hover{transform:translateY(-6px)}
+    .muted{color:var(--muted);font-size:13px}
+    .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:700}
+    .btn.primary{background:var(--accent-2);color:#fff}
+    .btn.ghost{background:transparent;border:1px solid #e6eef2}
+    .play-area{background:linear-gradient(180deg,#fff,#fbffff);padding:12px;border-radius:12px;box-shadow:var(--shadow)}
+    .question{font-weight:800;margin-bottom:8px}
+    .options{display:flex;flex-direction:column;gap:8px}
+    .option{padding:10px;border-radius:8px;background:#f7fafc;cursor:pointer;border:1px solid transparent}
+    .option:hover{transform:translateY(-3px);box-shadow:0 10px 30px rgba(6,15,20,0.04)}
+    .option.selected{background:linear-gradient(90deg,#e6fffa,#ecfeff);border-color:#bdece9}
+    .progress{height:10px;background:#eef6f6;border-radius:999px;overflow:hidden}
+    .progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent-2),var(--accent));width:0;transition:width .3s}
+    .sidebar{position:sticky;top:18px;height:calc(100vh - 36px)}
+    .small{font-size:13px;color:var(--muted)}
+    .overlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(2,6,23,0.45);z-index:80}
+    .overlay.show{display:flex}
+    .modal{background:var(--panel);padding:12px;border-radius:10px;width:720px;max-width:96%;box-shadow:0 22px 66px rgba(2,6,23,0.5)}
+    .toast-wrap{position:fixed;right:18px;bottom:18px;z-index:90;display:flex;flex-direction:column;gap:8px}
+    .toast{background:#111827;color:#fff;padding:10px 14px;border-radius:8px}
+    @media (max-width:980px){.container{grid-template-columns:1fr;padding:12px}.sidebar{order:2;position:relative;height:auto}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <main>
+      <header>
+        <div class="logo"><div class="box">DE</div><div><div style="font-weight:900">DisasterEdu</div><div class="small muted">Student Quiz Portal</div></div></div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <div id="greeting" class="muted small">Welcome</div>
+        </div>
+      </header>
+
+      <section id="homePanel" class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <h3 style="margin:0">Available Quizzes</h3>
+            <div class="small muted">Quizzes come from the Admin portal. Enter your name & class before starting.</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <input id="studentName" placeholder="Your name" style="padding:8px;border-radius:8px;border:1px solid #eef6f6" />
+            <input id="studentClass" placeholder="Class / Sec" style="padding:8px;border-radius:8px;border:1px solid #eef6f6" />
+            <button class="btn primary" onclick="storeProfile()">Save</button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px">
+          <div id="quizGrid" class="grid-cards"></div>
+        </div>
+      </section>
+
+      <section id="playPanel" style="display:none" class="play-area card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div>
+            <div id="playTitle" style="font-weight:900">Quiz title</div>
+            <div id="playMeta" class="small muted">Q 1 / N</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="small muted">Time left</div>
+            <div id="timer" style="padding:8px;border-radius:8px;background:#fff6;border:1px solid rgba(0,0,0,0.04);font-weight:700">--:--</div>
+          </div>
+        </div>
+
+        <div style="margin-top:10px">
+          <div class="progress"><i id="playProgress"></i></div>
+        </div>
+
+        <div id="questionArea" style="margin-top:12px"></div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:12px">
+          <div style="display:flex;gap:8px">
+            <button class="btn ghost" onclick="prevQ()">Previous</button>
+            <button class="btn ghost" onclick="nextQ()">Next</button>
+          </div>
+          <div>
+            <button class="btn warn" onclick="submitAttempt()">Finish & Submit</button>
+          </div>
+        </div>
+      </section>
+
+      <section id="reviewPanel" style="display:none" class="card">
+        <h3>Review & Results</h3>
+        <div id="reviewContent" style="margin-top:10px"></div>
+        <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+          <div id="reviewSummary" class="small muted"></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn ghost" onclick="backToHome()">Back</button>
+            <button class="btn primary" onclick="downloadResult()">Download Result</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <aside class="sidebar">
+      <div class="card">
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-weight:900" id="sideName">Student</div><div class="small muted" id="sideClass">Class</div></div>
+          <div style="text-align:right">
+            <div class="small muted">Attempts</div><div id="attemptCount" style="font-weight:900">0</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4 style="margin:0">Quick Actions</h4>
+        <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+          <button class="btn ghost" onclick="openHistory()">My Attempts</button>
+          <button class="btn ghost" onclick="openAdminHelp()">How to use</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h4 style="margin:0">Tips</h4>
+        <div class="small muted" style="margin-top:8px">Read each option carefully. Use Admin resources to learn prevention.</div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- overlay modal & toast container -->
+  <div class="overlay" id="overlay" onclick="if(event.target.id==='overlay')closeModal()">
+    <div class="modal" id="modal"></div>
+  </div>
+  <div class="toast-wrap" id="toasts"></div>
+
+  <script>
+    /* Keys shared with admin.html */
+    const DB_KEY = 'disasteredu.db.v1';
+    const RESULTS_KEY = 'disasteredu.results.v1';
+
+    // local state
+    let DB = loadDB();           // {quizzes, resources, students, activity}
+    let RESULTS = loadResults(); // array of {id, quizId, studentName, studentClass, score, date, answers}
+    let PROFILE = loadProfile(); // {name, class}
+    let current = null;         // current attempt state
+    let timerInterval = null;
+
+    // utils
+    function loadDB(){ try{ return JSON.parse(localStorage.getItem(DB_KEY)) || {quizzes:[],resources:[],students:[],activity:[]}; }catch(e){ return {quizzes:[],resources:[],students:[],activity:[]}; } }
+    function loadResults(){ try{ return JSON.parse(localStorage.getItem(RESULTS_KEY)) || []; }catch(e){ return []; } }
+    function loadProfile(){ try{ return JSON.parse(localStorage.getItem('disasteredu.profile')) || {name:'',class:''}; }catch(e){ return {name:'',class:''}; } }
+    function saveResults(){ localStorage.setItem(RESULTS_KEY, JSON.stringify(RESULTS)); window.dispatchEvent(new Event('storage')); } // trigger storage event for same-tab listeners
+    function saveProfile(){ localStorage.setItem('disasteredu.profile', JSON.stringify(PROFILE)); updateProfileUI(); }
+    function toast(msg,t=2200){ const n=document.createElement('div'); n.className='toast'; n.textContent=msg; document.getElementById('toasts').appendChild(n); setTimeout(()=>n.remove(),t); }
+    function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
+    // initialise UI
+    function init(){
+      DB = loadDB(); RESULTS = loadResults(); PROFILE = loadProfile();
+      document.getElementById('studentName').value = PROFILE.name || '';
+      document.getElementById('studentClass').value = PROFILE.class || '';
+      document.getElementById('greeting').textContent = PROFILE.name ? `Hello, ${PROFILE.name}` : 'Welcome';
+      document.getElementById('sideName').textContent = PROFILE.name || 'Student';
+      document.getElementById('sideClass').textContent = PROFILE.class ? 'Class: ' + PROFILE.class : 'Class: —';
+      document.getElementById('attemptCount').textContent = (RESULTS||[]).length;
+      renderQuizGrid();
+    }
+
+    function storeProfile(){
+      PROFILE.name = document.getElementById('studentName').value.trim();
+      PROFILE.class = document.getElementById('studentClass').value.trim();
+      if(!PROFILE.name) return toast('Please enter your name');
+      saveProfile(); toast('Profile saved');
+    }
+
+    // render available quizzes
+    function renderQuizGrid(){
+      DB = loadDB();
+      const grid = document.getElementById('quizGrid'); grid.innerHTML='';
+      if(!DB.quizzes || DB.quizzes.length===0){
+        grid.innerHTML = '<div class="card muted small">No quizzes are available. Please ask your teacher to add quizzes in the Admin portal.</div>';
+        return;
+      }
+      DB.quizzes.forEach(q=>{
+        const card = document.createElement('div'); card.className='quiz-card';
+        const attempts = RESULTS.filter(r=>r.quizId===q.id);
+        const best = attempts.length ? Math.max(...attempts.map(a=>a.score)) : '--';
+        card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
+          <div><div style="font-weight:900">${escapeHtml(q.title)}</div><div class="small muted">${escapeHtml(q.description||'—')}</div></div>
+          <div style="text-align:right"><div class="small muted">Best</div><div style="font-weight:900">${best}</div></div>
+        </div>
+        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:center">
+          <div class="small muted">Questions: ${(q.questions||[]).length} • Time: ${q.duration||Math.max(60,(q.questions||[]).length*60)}s</div>
+          <div><button class="btn primary" onclick="startAttempt('${q.id}')">Start</button></div>
+        </div>`;
+        grid.appendChild(card);
+      });
+    }
+
+    // start attempt
+    function startAttempt(quizId){
+      if(!PROFILE.name){ toast('Please enter and save your name & class before starting'); return; }
+      DB = loadDB();
+      const quiz = DB.quizzes.find(x=>x.id===quizId);
+      if(!quiz) return toast('Quiz not found');
+      current = {
+        id: 'attempt-' + Date.now() + '-' + Math.random().toString(36).slice(2,6),
+        quizId: quiz.id,
+        quizTitle: quiz.title,
+        start: new Date().toISOString(),
+        duration: quiz.duration || Math.max(180,(quiz.questions||[]).length*60),
+        answers: Array((quiz.questions||[]).length).fill(null),
+        index: 0
+      };
+      showPlayPanel();
+      renderQuestion();
+      startTimer();
+    }
+
+    function showPlayPanel(){
+      document.getElementById('homePanel').style.display='none';
+      document.getElementById('playPanel').style.display='block';
+      document.getElementById('reviewPanel').style.display='none';
+    }
+
+    function backToHome(){
+      current = null;
+      stopTimer();
+      document.getElementById('homePanel').style.display='block';
+      document.getElementById('playPanel').style.display='none';
+      document.getElementById('reviewPanel').style.display='none';
+      renderQuizGrid();
+      document.getElementById('attemptCount').textContent = (RESULTS||[]).length;
+    }
+
+    function renderQuestion(){
+      const quiz = DB.quizzes.find(x=>x.id===current.quizId);
+      const qObj = quiz.questions[current.index];
+      document.getElementById('playTitle').textContent = quiz.title;
+      document.getElementById('playMeta').textContent = `Question ${current.index+1} of ${quiz.questions.length}`;
+      const percent = Math.round(current.index / quiz.questions.length * 100);
+      document.getElementById('playProgress').style.width = percent + '%';
+
+      const area = document.getElementById('questionArea'); area.innerHTML='';
+      const qDiv = document.createElement('div'); qDiv.innerHTML = `<div class="question">${escapeHtml(qObj.text)}</div>`;
+      const opts = document.createElement('div'); opts.className='options';
+      qObj.choices.forEach((c,i)=>{
+        const option = document.createElement('div'); option.className='option'; option.textContent = c;
+        if(current.answers[current.index] === i) option.classList.add('selected');
+        option.onclick = ()=>{ current.answers[current.index] = i; opts.querySelectorAll('.option').forEach(o=>o.classList.remove('selected')); option.classList.add('selected'); };
+        opts.appendChild(option);
+      });
+      qDiv.appendChild(opts);
+      area.appendChild(qDiv);
+    }
+
+    function prevQ(){ if(!current) return; if(current.index>0){ current.index--; renderQuestion(); } }
+    function nextQ(){ const quiz = DB.quizzes.find(x=>x.id===current.quizId); if(current.index < quiz.questions.length-1){ current.index++; renderQuestion(); } }
+
+    // timer
+    function startTimer(){
+      stopTimer();
+      const end = Date.now() + current.duration*1000;
+      timerInterval = setInterval(()=>{
+        const rem = Math.max(0, Math.floor((end - Date.now())/1000));
+        const mm = String(Math.floor(rem/60)).padStart(2,'0'); const ss = String(rem%60).padStart(2,'0');
+        document.getElementById('timer').textContent = `${mm}:${ss}`;
+        if(rem <= 0){ clearInterval(timerInterval); autoSubmit(); }
+      }, 250);
+    }
+    function stopTimer(){ if(timerInterval) clearInterval(timerInterval); timerInterval = null; }
+
+    function autoSubmit(){ toast('Time up — auto-submitting'); submitAttempt(true); }
+
+    // submit
+    function submitAttempt(auto=false){
+      if(!current) return;
+      // if not auto, confirm
+      if(!auto){
+        if(!confirm('Submit attempt now?')) return;
+      }
+      // mark unanswered as -1
+      current.answers = current.answers.map(a => a === null ? -1 : a);
+      scoreAttempt();
+    }
+
+    function scoreAttempt(){
+      const quiz = DB.quizzes.find(x=>x.id===current.quizId);
+      let correct = 0;
+      quiz.questions.forEach((q,i)=>{ if(current.answers[i] === q.answer) correct++; });
+      const pct = Math.round(correct / quiz.questions.length * 100);
+      const result = {
+        id: current.id,
+        quizId: current.quizId,
+        studentName: PROFILE.name || 'Guest',
+        studentClass: PROFILE.class || '—',
+        score: pct,
+        correct,
+        total: quiz.questions.length,
+        answers: current.answers,
+        date: new Date().toISOString()
+      };
+      RESULTS.push(result);
+      saveResults();
+      stopTimer();
+      showReview(result);
+      document.getElementById('attemptCount').textContent = RESULTS.length;
+      toast(`Submitted — score: ${pct}%`);
+    }
+
+    function showReview(result){
+      document.getElementById('homePanel').style.display='none';
+      document.getElementById('playPanel').style.display='none';
+      document.getElementById('reviewPanel').style.display='block';
+      const quiz = DB.quizzes.find(x=>x.id===result.quizId);
+      const review = document.getElementById('reviewContent'); review.innerHTML='';
+      quiz.questions.forEach((q,i)=>{
+        const wrap = document.createElement('div'); wrap.style.marginBottom='10px'; wrap.style.padding='8px'; wrap.style.borderRadius='8px'; wrap.style.background='#fff';
+        const yours = result.answers[i]; const correct = q.answer;
+        const left = document.createElement('div'); left.innerHTML = `<div style="font-weight:700">Q${i+1}. ${escapeHtml(q.text)}</div>`;
+        const right = document.createElement('div'); right.style.textAlign='right';
+        right.innerHTML = `<div class="small muted">Your answer: ${yours>=0 ? escapeHtml(q.choices[yours]) : '—'}</div><div class="small muted">Correct: ${escapeHtml(q.choices[correct])}</div>`;
+        wrap.appendChild(left); wrap.appendChild(right); review.appendChild(wrap);
+      });
+      document.getElementById('reviewSummary').textContent = `Score: ${result.score}% — ${result.correct}/${result.total} • ${new Date(result.date).toLocaleString()}`;
+    }
+
+    function downloadResult(){
+      const last = RESULTS[RESULTS.length-1];
+      if(!last) return toast('No result available');
+      const csv = `quiz,student,class,score,date\n"${escapeCsv(last.quizId)}","${escapeCsv(last.studentName)}","${escapeCsv(last.studentClass)}","${last.score}","${escapeCsv(last.date)}"`;
+      const blob = new Blob([csv], { type: 'text/csv' }); const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download = `result-${last.quizId}-${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url); toast('Downloaded');
+    }
+    function exportAllResults(){ const csv = toCSV(RESULTS); const blob = new Blob([csv], { type:'text/csv' }); const url = URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download = `disasteredu-results-${new Date().toISOString().slice(0,10)}.csv`; a.click(); URL.revokeObjectURL(url); }
+
+    function toCSV(arr){
+      if(!arr || arr.length===0) return '';
+      const keys = Object.keys(arr[0]);
+      const lines = [keys.join(',')];
+      arr.forEach(r => lines.push(keys.map(k=>`"${String(r[k]||'').replace(/"/g,'""')}"`).join(',')));
+      return lines.join('\n');
+    }
+
+    function escapeCsv(s){ return (s||'').toString().replace(/"/g,'""'); }
+
+    // history / attempts UI (simple modal)
+    function openHistory(){
+      const html = `<h3>My Attempts</h3><div class="small muted">Past attempts stored locally</div><div style="margin-top:12px"><table style="width:100%"><thead><tr><th>Quiz</th><th>Score</th><th>Date</th></tr></thead><tbody>${RESULTS.map(r=>`<tr><td>${escapeHtml(getQuizTitle(r.quizId)||r.quizId)}</td><td>${r.score}%</td><td>${new Date(r.date).toLocaleString()}</td></tr>`).join('')}</tbody></table></div><div style="display:flex;gap:8px;margin-top:12px"><button class="btn primary" onclick="exportAllResults()">Export CSV</button><button class="btn ghost" onclick="closeModal()">Close</button></div>`;
+      openModal(html, true);
+    }
+
+    function openAdminHelp(){ openModal(`<h3>How to use</h3><div class="small muted">1) Save your name/class. 2) Choose a quiz. 3) Answer and submit. Results will be visible in Admin portal under Performance.</div><div style="margin-top:12px"><button class="btn ghost" onclick="closeModal()">Close</button></div>`, true); }
+
+    function getQuizTitle(id){ const q = DB.quizzes.find(x=>x.id===id); return q? q.title : null; }
+
+    // modal helpers
+    function openModal(html, lock=false){ document.getElementById('modal').innerHTML = html; const ov = document.getElementById('overlay'); ov.classList.add('show'); }
+    function closeModal(){ document.getElementById('overlay').classList.remove('show'); document.getElementById('modal').innerHTML = ''; }
+
+    // called when storage updates (another tab saved results/db)
+    window.addEventListener('storage', (e)=>{ if(e.key===DB_KEY){ DB = loadDB(); renderQuizGrid(); } if(e.key===RESULTS_KEY){ RESULTS = loadResults(); document.getElementById('attemptCount').textContent = RESULTS.length; } });
+
+    // small helpers
+    function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+
+    // initialization
+    init();
+
+    // expose refresh for admin (if admin pushes new quizzes live, student can press Refresh)
+    window.refreshFromAdmin = function(){ DB = loadDB(); renderQuizGrid(); toast('Quizzes refreshed'); };
+
+  </script>
+</body>
+</html>

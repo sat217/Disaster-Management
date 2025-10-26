@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up</title>
+  <style>
+    /* Reset */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: "Segoe UI", Arial, sans-serif;
+    }
+
+    /* Background */
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+    }
+
+    /* Signup Box */
+    .box {
+      background: #fff;
+      border-radius: 12px;
+      padding: 30px 25px;
+      width: 320px;
+      text-align: center;
+      box-shadow: 0px 8px 20px rgba(0,0,0,0.2);
+      animation: fadeIn 1s ease-in-out;
+    }
+
+    /* Heading */
+    .box h2 {
+      margin-bottom: 20px;
+      color: #333;
+    }
+
+    /* Input fields */
+    input {
+      width: 90%;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      outline: none;
+      transition: 0.3s;
+    }
+
+    input:focus {
+      border-color: #667eea;
+      box-shadow: 0 0 5px #667eea;
+    }
+
+    /* Button */
+    button {
+      width: 95%;
+      padding: 10px;
+      margin-top: 15px;
+      border: none;
+      border-radius: 6px;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      font-size: 16px;
+      cursor: pointer;
+      transition: transform 0.2s, background 0.3s;
+    }
+
+    button:hover {
+      transform: scale(1.05);
+      background: linear-gradient(135deg, #5a67d8, #6b46c1);
+    }
+
+    /* Login link */
+    p {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #555;
+    }
+
+    p a {
+      color: #667eea;
+      text-decoration: none;
+      font-weight: 600;
+    }
+
+    p a:hover {
+      text-decoration: underline;
+    }
+
+    /* Animation */
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Sign Up</h2>
+    <input type="text" id="name" placeholder="Full Name"><br>
+    <input type="email" id="email" placeholder="Email"><br>
+    <input type="password" id="password" placeholder="Password"><br>
+    <button onclick="signup()">Register</button>
+    <p>Already have an account? <a href="login.html">Login</a></p>
+  </div>
+
+  <script>
+    function signup() {
+      localStorage.setItem("name", document.getElementById("name").value);
+      localStorage.setItem("email", document.getElementById("email").value);
+      localStorage.setItem("password", document.getElementById("password").value);
+      alert("Signup successful! Please login now.");
+      window.location.href = "login.html";  
+    }
+  </script>
+</body>
+</html>

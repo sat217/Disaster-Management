@@ -1,0 +1,494 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>DisasterEdu — Admin Portal</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <style>
+    :root{
+      --bg:#f6f8fb; --panel:#ffffff; --muted:#6b7280; --ink:#0f172a;
+      --accent:#0ea5a4; --accent-2:#06b6d4; --danger:#ef4444; --radius:12px;
+      --shadow: 0 10px 30px rgba(6,15,25,0.06);
+      --max-w:1200px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,Arial,sans-serif;background:linear-gradient(180deg,var(--bg),#eef2f7);color:var(--ink)}
+    .wrap{max-width:var(--max-w);margin:28px auto;padding:18px;display:grid;grid-template-columns:260px 1fr;gap:18px}
+    aside{background:var(--panel);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow);height:calc(100vh - 84px);position:sticky;top:18px;overflow:auto}
+    .brand{display:flex;gap:12px;align-items:center;margin-bottom:12px}
+    .logo{width:44px;height:44px;border-radius:10px;background:linear-gradient(135deg,var(--accent),var(--accent-2));display:grid;place-items:center;color:#fff;font-weight:800}
+    nav{display:flex;flex-direction:column;gap:6px;margin-top:6px}
+    nav button{background:transparent;border:none;color:var(--ink);text-align:left;padding:10px;border-radius:8px;cursor:pointer;font-weight:700}
+    nav button:hover{background:#f1f5f9}
+    nav button.active{background:linear-gradient(90deg,#f8fffe,#ffffff);box-shadow:0 6px 18px rgba(6,15,20,0.03)}
+    main{min-height:calc(100vh - 84px);overflow:auto}
+    .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+    .search{display:flex;gap:10px;align-items:center;padding:10px;border-radius:10px;background:var(--panel);box-shadow:var(--shadow)}
+    .search input{border:none;outline:none;background:transparent;font-size:14px}
+    .card{background:var(--panel);border-radius:10px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px}
+    .stats{display:flex;gap:12px;margin-bottom:12px}
+    .stat{flex:1;padding:12px;border-radius:10px;background:linear-gradient(180deg,#fff,#fbffff);display:flex;align-items:center;justify-content:space-between}
+    .muted{color:var(--muted);font-size:13px}
+    .grid-2{display:grid;grid-template-columns:1fr 380px;gap:12px}
+    table{width:100%;border-collapse:collapse;font-size:14px}
+    th,td{padding:10px;border-bottom:1px solid #eef2f6;text-align:left}
+    th{background:#fbfdff;color:var(--muted);font-weight:700}
+    .btn{padding:8px 12px;border-radius:8px;border:none;cursor:pointer;font-weight:700}
+    .btn.primary{background:var(--accent-2);color:#fff}
+    .btn.ghost{background:transparent;border:1px solid #e6eef2}
+    .btn.warn{background:var(--danger);color:#fff}
+    .progress{height:10px;background:#eef6f6;border-radius:999px;overflow:hidden}
+    .progress > i{display:block;height:100%;background:linear-gradient(90deg,var(--accent-2),var(--accent));width:0;transition:width .3s}
+    .small{font-size:13px;color:var(--muted)}
+    .flex{display:flex;gap:8px;align-items:center}
+    .right{margin-left:auto}
+    .modal-overlay{position:fixed;inset:0;background:rgba(2,6,23,0.5);display:none;align-items:center;justify-content:center;z-index:80}
+    .modal{background:var(--panel);border-radius:10px;padding:18px;width:900px;max-width:96%;box-shadow:0 22px 66px rgba(2,6,23,0.5)}
+    .toast-wrap{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:8px;z-index:90}
+    .toast{background:#111827;color:#fff;padding:10px 14px;border-radius:8px;box-shadow:var(--shadow)}
+    @media (max-width:980px){.wrap{grid-template-columns:1fr;padding:12px}.grid-2{grid-template-columns:1fr}.aside{position:relative;height:auto}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <aside aria-label="Sidebar">
+      <div class="brand">
+        <div class="logo">DE</div>
+        <div>
+          <div style="font-weight:800">DisasterEdu</div>
+          <div class="small">Admin Portal</div>
+        </div>
+      </div>
+
+      <nav>
+        <button id="nav-dashboard" class="active" onclick="nav('dashboard')">Dashboard</button>
+        <button id="nav-quizzes" onclick="nav('quizzes')">Quizzes</button>
+        
+        <button id="nav-students" onclick="nav('students')">Students</button>
+        <button id="nav-performance" onclick="nav('performance')">Performance</button>
+      </nav>
+
+      <div style="margin-top:18px">
+        <div class="small">Signed in as</div>
+        <div style="font-weight:800;margin-top:6px">Admin • admin@edu.org</div>
+      </div>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <div style="display:flex;gap:12px;align-items:center">
+          <div class="search">
+            <svg width="16" height="16" viewBox="0 0 24 24" style="opacity:.7"><path fill="currentColor" d="M9.5 3a6.5 6.5 0 1 1 0 13 6.5 6.5 0 0 1 0-13zm11 18-5.35-5.36"/></svg>
+            <input id="globalSearch" placeholder="Search quizzes, students or resources..." oninput="applySearch()" />
+          </div>
+        </div>
+
+        <div style="display:flex;gap:8px;align-items:center">
+          <div class="small muted" id="lastUpdated">Last saved: --</div>
+          <button class="btn ghost" onclick="exportAll()">Export</button>
+          <button class="btn primary" onclick="openCreate('quiz')">+ Create</button>
+        </div>
+      </div>
+
+      <div id="contentArea">
+        <!-- content injected here -->
+      </div>
+    </main>
+  </div>
+
+  <!-- modal + toast containers -->
+  <div class="modal-overlay" id="modalOverlay" onclick="if(event.target.id==='modalOverlay')closeModal()">
+    <div class="modal" id="modalInner"></div>
+  </div>
+  <div class="toast-wrap" id="toasts"></div>
+
+  <script>
+    /* Shared DB keys so quiz.html can write results and admin reads them */
+    const DB_KEY = 'disasteredu.db.v1';            // stores {quizzes, resources, students, activity}
+    const RESULTS_KEY = 'disasteredu.results.v1';  // students' attempts (quizId, studentName, class, score, date)
+
+    // default dataset if first run (keeps admin file functional)
+    const DEFAULT_DB = {
+      quizzes: [
+        { id: 'q1', title:'Flood Safety Basics', description:'Short quiz for Grade 6', duration:180,
+          questions: [
+            { id:'q1-1', text:'Where should you move during flood?', choices:['Basement','Higher ground','Kitchen'], answer:1},
+            { id:'q1-2', text:'Which is unsafe?', choices:['Electrical wires','Roof','Top floor'], answer:0}
+          ]
+        },
+        { id: 'q2', title:'Earthquake Awareness', description:'Drop Cover Hold On', duration:240,
+          questions: [
+            { id:'q2-1', text:'What to do during shaking?', choices:['Run out','Drop, cover, hold on','Stand near window'], answer:1}
+          ]
+        }
+      ],
+      resources: [
+        { id:'r1', title:"Flood Safety - Do's & Don'ts", youtubeId:'cspHwfNg5fM', tags:['flood','safety'] },
+        { id:'r2', title:"Earthquake Drill", youtubeId:'dQw4w9WgXcQ', tags:['earthquake'] }
+      ],
+      students: [
+        { id:'s1', name:'Asha Sharma', class:'6A' },
+        { id:'s2', name:'Ravi Kumar', class:'6B' }
+      ],
+      activity: []
+    };
+
+    // load DB from storage or initialize
+    let DB = loadDB();
+    let RESULTS = loadResults();
+
+    function loadDB(){
+      try {
+        const raw = localStorage.getItem(DB_KEY);
+        if(!raw){ localStorage.setItem(DB_KEY, JSON.stringify(DEFAULT_DB)); return JSON.parse(JSON.stringify(DEFAULT_DB)); }
+        return JSON.parse(raw);
+      } catch(e) { console.warn('db load failed',e); localStorage.setItem(DB_KEY, JSON.stringify(DEFAULT_DB)); return JSON.parse(JSON.stringify(DEFAULT_DB)); }
+    }
+    function saveDB(){
+      localStorage.setItem(DB_KEY, JSON.stringify(DB));
+      document.getElementById('lastUpdated').textContent = 'Last saved: ' + new Date().toLocaleString();
+    }
+    function loadResults(){
+      try{ return JSON.parse(localStorage.getItem(RESULTS_KEY)) || []; } catch(e){ return []; }
+    }
+    function saveResults(){ localStorage.setItem(RESULTS_KEY, JSON.stringify(RESULTS)); }
+
+    // small toast helper
+    function toast(msg, t=2500){ const tdiv=document.createElement('div'); tdiv.className='toast'; tdiv.textContent=msg; document.getElementById('toasts').appendChild(tdiv); setTimeout(()=>tdiv.remove(), t); }
+
+    // navigation
+    function nav(view){
+      document.querySelectorAll('nav button').forEach(b=>b.classList.remove('active'));
+      document.getElementById('nav-'+view).classList.add('active');
+      renderView(view);
+    }
+
+    function renderView(view){
+      const c = document.getElementById('contentArea'); c.innerHTML='';
+      if(view==='dashboard') renderDashboard(c);
+      if(view==='quizzes') renderQuizzes(c);
+      if(view==='resources') renderResources(c);
+      if(view==='students') renderStudents(c);
+      if(view==='performance') renderPerformance(c);
+    }
+
+    /* ---------- DASHBOARD ---------- */
+    function renderDashboard(container){
+      const card = el('div','card');
+      card.innerHTML = `<h3>Dashboard</h3><div class="small muted">Summary of system</div>`;
+      const stats = el('div'); stats.className='stats'; stats.innerHTML = `
+        <div class="stat"><div><div style="font-weight:900">${DB.quizzes.length}</div><div class="small muted">Quizzes</div></div><svg width="36" height="36" viewBox="0 0 24 24"><path fill="#06b6d4" d="M12 2l3 7h7l-5.7 4.1L20 22l-8-5-8 5 2.7-8.9L1 9h7z"/></svg></div>
+        <div class="stat"><div><div style="font-weight:900">${DB.students.length}</div><div class="small muted">Students</div></div><svg width="36" height="36" viewBox="0 0 24 24"><path fill="#60a5fa" d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10zm-9 9a9 9 0 0 1 18 0H3z"/></svg></div>
+        <div class="stat"><div><div style="font-weight:900">${DB.resources.length}</div><div class="small muted">Resources</div></div><svg width="36" height="36" viewBox="0 0 24 24"><path fill="#34d399" d="M5 3h14a2 2 0 0 1 2 2v12l-4-2-4 2-4-2-4 2V5a2 2 0 0 1 2-2z"/></svg></div>`;
+      card.appendChild(stats);
+      container.appendChild(card);
+
+      // recent activity, results summary
+      const grid = el('div'); grid.className='grid-2';
+      const recentCard = el('div','card'); recentCard.innerHTML = `<h4>Recent activity</h4><div class="small muted" id="recentList">—</div>`;
+      const perfCard = el('div','card'); perfCard.innerHTML = `<h4>Latest results</h4><div id="latestResults"></div>`;
+      grid.appendChild(recentCard); grid.appendChild(perfCard);
+      container.appendChild(grid);
+
+      updateDashboardWidgets();
+    }
+
+    function updateDashboardWidgets(){
+      // recent activity
+      const list = DB.activity.slice().reverse().slice(0,6).map(a=>`<div class="small">${escapeHtml(a)}</div>`).join('') || '<div class="small muted">No activity yet</div>';
+      document.getElementById('recentList').innerHTML = list;
+
+      // latest results
+      const latest = loadResults().slice().reverse().slice(0,6);
+      const wrap = latest.map(r=>`<div style="margin-bottom:8px"><strong>${escapeHtml(r.studentName || 'Unknown')}</strong> — ${escapeHtml((getQuizTitle(r.quizId))) || 'Quiz (deleted)'} <div class="small muted">${r.score}% • ${r.date}</div>
+        <div class="progress" style="margin-top:6px"><i style="width:${r.score}%"></i></div></div>`).join('');
+      document.getElementById('latestResults').innerHTML = wrap || '<div class="small muted">No attempts yet</div>';
+    }
+
+    function getQuizTitle(id){ const q=DB.quizzes.find(x=>x.id===id); return q? q.title : null; }
+
+    /* ---------- QUIZZES ---------- */
+    function renderQuizzes(container){
+      container.innerHTML = `<h3>Quizzes</h3><div class="small muted">Create and manage quizzes shown to students</div>`;
+      const grid = el('div'); grid.style.marginTop='12px';
+      DB.quizzes.forEach((q,idx)=>{
+        const card = el('div','card');
+        card.innerHTML = `<div style="display:flex;justify-content:space-between;align-items:center">
+          <div><strong>${escapeHtml(q.title)}</strong><div class="small muted" style="margin-top:6px">${escapeHtml(q.description||'—')}</div></div>
+          <div class="flex"><button class="btn ghost" onclick="openEditQuiz('${q.id}')">Edit</button><button class="btn warn" style="margin-left:8px" onclick="deleteQuizPrompt('${q.id}')">Delete</button></div>
+        </div>
+        <div class="small muted" style="margin-top:8px">Questions: ${(q.questions||[]).length} • Duration: ${q.duration || '—'}s</div>`;
+        grid.appendChild(card);
+      });
+      container.appendChild(grid);
+
+      // add new form
+      const form = el('div','card');
+      form.style.marginTop='12px';
+      form.innerHTML = `<h4>Add new quiz</h4>
+        <div class="small muted">Use the JSON editor for quick input or the simple form below.</div>
+        <div style="display:flex;gap:8px;margin-top:10px">
+          <button class="btn primary" onclick="openCreate('quiz')">Open Quiz Builder</button>
+          <button class="btn ghost" onclick="openJsonImport('quiz')">Import JSON</button>
+        </div>`;
+      container.appendChild(form);
+    }
+
+    function openCreate(type){
+      if(type==='quiz'){
+        const html = `<h3>Create Quiz</h3>
+          <label class="small muted">Title</label><input id="c_title" style="width:100%;padding:10px;border-radius:8px;border:1px solid #eef6f6" />
+          <label class="small muted">Description</label><input id="c_desc" style="width:100%;padding:10px;border-radius:8px;border:1px solid #eef6f6" />
+          <label class="small muted">Duration (seconds)</label><input id="c_duration" style="width:140px;padding:10px;border-radius:8px;border:1px solid #eef6f6" />
+          <label class="small muted">Questions (one per line, format: Question | choice1 | choice2 | choice3 @answerIndex)</label>
+          <textarea id="c_qs" style="width:100%;height:120px;padding:10px;border-radius:8px;border:1px solid #eef6f6"></textarea>
+          <div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" id="createQuizBtn">Create</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>`;
+        openModal(html);
+        document.getElementById('createQuizBtn').addEventListener('click', ()=>{
+          const title = document.getElementById('c_title').value.trim();
+          const desc = document.getElementById('c_desc').value.trim();
+          const duration = parseInt(document.getElementById('c_duration').value,10) || 180;
+          const raw = document.getElementById('c_qs').value.trim();
+          if(!title) return toast('Please enter quiz title');
+          const questions = [];
+          if(raw){
+            raw.split('\n').map(s=>s.trim()).filter(Boolean).forEach((ln, idx)=>{
+              let parts = ln.split('|').map(p=>p.trim());
+              let qtext = parts.shift() || `Question ${idx+1}`;
+              let answerIndex = 0;
+              // detect @index in last choice or qtext
+              parts = parts.map(p=>{
+                const m = p.match(/@(\d+)$/);
+                if(m){ answerIndex = parseInt(m[1],10); return p.replace(/@(\d+)$/,'').trim(); }
+                return p;
+              });
+              questions.push({ id: 'q-' + Date.now() + '-' + Math.random().toString(36).slice(2,6), text: qtext, choices: parts.length?parts:['Yes','No'], answer: Math.max(0,Math.min(parts.length-1, answerIndex)) });
+            });
+          }
+          const newQ = { id: 'quiz-' + Date.now(), title, description: desc, duration: duration, questions };
+          DB.quizzes.push(newQ);
+          DB.activity.push(`Created quiz: ${title}`);
+          saveDB(); closeModal(); toast('Quiz added'); renderView('quizzes');
+        });
+      }
+    }
+
+    function openJsonImport(kind){
+      const html = `<h3>Import ${kind} JSON</h3>
+        <div class="small muted">Paste JSON that matches the required structure.</div>
+        <textarea id="impJson" style="width:100%;height:200px;padding:10px;border-radius:8px;border:1px solid #eef6f6"></textarea>
+        <div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" id="doImport">Import</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>`;
+      openModal(html);
+      document.getElementById('doImport').addEventListener('click', ()=>{
+        try{
+          const raw = document.getElementById('impJson').value.trim();
+          const parsed = JSON.parse(raw);
+          if(kind==='quiz'){
+            if(Array.isArray(parsed)) parsed.forEach(q=>DB.quizzes.push(q));
+            else DB.quizzes.push(parsed);
+            DB.activity.push('Imported quiz JSON');
+          }
+          saveDB(); closeModal(); toast('Imported'); renderView('quizzes');
+        }catch(e){ toast('Invalid JSON'); }
+      });
+    }
+
+    function openEditQuiz(id){
+      const q = DB.quizzes.find(x=>x.id===id); if(!q) return toast('Quiz missing');
+      let html = `<h3>Edit Quiz</h3>
+        <label class="small muted">Title</label><input id="e_title" style="width:100%;padding:10px;border-radius:8px;border:1px solid #eef6f6" value="${escapeHtml(q.title)}" />
+        <label class="small muted">Description</label><input id="e_desc" style="width:100%;padding:10px;border-radius:8px;border:1px solid #eef6f6" value="${escapeHtml(q.description||'')}" />
+        <label class="small muted">Duration (s)</label><input id="e_duration" style="width:140px;padding:10px;border-radius:8px;border:1px solid #eef6f6" value="${q.duration||180}" />
+        <label class="small muted">Questions (one per line, as above)</label>
+        <textarea id="e_qs" style="width:100%;height:180px;padding:10px;border-radius:8px;border:1px solid #eef6f6">${q.questions.map(qq=>`${escapeHtml(qq.text)} | ${qq.choices.join(' | ')} @${qq.answer}`).join('\n')}</textarea>
+        <div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" id="saveQuizBtn">Save</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>`;
+      openModal(html);
+      document.getElementById('saveQuizBtn').addEventListener('click', ()=>{
+        q.title = document.getElementById('e_title').value.trim();
+        q.description = document.getElementById('e_desc').value.trim();
+        q.duration = parseInt(document.getElementById('e_duration').value,10) || 180;
+        q.questions = [];
+        const raw = document.getElementById('e_qs').value.trim();
+        raw.split('\n').map(s=>s.trim()).filter(Boolean).forEach((ln, idx)=>{
+          let parts = ln.split('|').map(p=>p.trim());
+          let qtext = parts.shift() || `Q${idx+1}`;
+          let answerIndex = 0;
+          parts = parts.map(p=>{
+            const m = p.match(/@(\d+)$/);
+            if(m){ answerIndex = parseInt(m[1],10); return p.replace(/@(\d+)$/,'').trim(); }
+            return p;
+          });
+          q.questions.push({ id:'q-'+Math.random().toString(36).slice(2,6), text:qtext, choices:parts.length?parts:['Yes','No'], answer:Math.max(0,Math.min(parts.length-1,answerIndex)) });
+        });
+        DB.activity.push('Edited quiz: '+q.title);
+        saveDB(); closeModal(); toast('Saved'); renderView('quizzes');
+      });
+    }
+
+    function deleteQuizPrompt(id){
+      openModal(`<h3>Delete quiz</h3><div class="small muted">This will remove the quiz. Students' past results will remain.</div>
+        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn warn" id="delConfirm">Delete</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>`);
+      document.getElementById('delConfirm').addEventListener('click', ()=>{ DB.quizzes = DB.quizzes.filter(q=>q.id!==id); DB.activity.push('Deleted quiz'); saveDB(); closeModal(); toast('Deleted'); renderView('quizzes'); });
+    }
+
+   
+
+    /* ---------- STUDENTS ---------- */
+    function renderStudents(container){
+      container.innerHTML = `<h3>Students</h3><div class="small muted">Manage known students (optional)</div>`;
+      const tbl = el('div'); tbl.style.marginTop='12px';
+      tbl.innerHTML = `<table><thead><tr><th>Name</th><th>Class</th><th>Actions</th></tr></thead><tbody id="stuT"></tbody></table>`;
+      container.appendChild(tbl);
+      const tbody = document.getElementById('stuT');
+      DB.students.forEach((s, idx)=>{
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${escapeHtml(s.name)}</td><td>${escapeHtml(s.class)}</td><td><button class="btn ghost" onclick="editStudent('${s.id}')">Edit</button><button class="btn warn" style="margin-left:8px" onclick="deleteStudent('${s.id}')">Delete</button></td>`;
+        tbody.appendChild(tr);
+      });
+
+      const add = el('div','card'); add.style.marginTop='12px';
+      add.innerHTML = `<h4>Add student</h4>
+        <label class="small muted">Name</label><input id="stu_name" style="width:100%;padding:10px;border-radius:8px;border:1px solid #eef6f6" />
+        <label class="small muted">Class</label><input id="stu_class" style="width:100%;padding:10px;border-radius:8px;border:1px solid #eef6f6" />
+        <div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" id="doAddStu">Add</button></div>`;
+      container.appendChild(add);
+      document.getElementById('doAddStu').addEventListener('click', ()=>{
+        const name = document.getElementById('stu_name').value.trim(); const cls = document.getElementById('stu_class').value.trim();
+        if(!name) return toast('Enter name'); DB.students.push({ id:'s-'+Date.now(), name, class:cls||'—' }); DB.activity.push('Added student: '+name); saveDB(); renderView('students');
+      });
+    }
+    function editStudent(id){
+      const s = DB.students.find(x=>x.id===id); if(!s) return;
+      openModal(`<h3>Edit student</h3><label class="small muted">Name</label><input id="es_name" value="${escapeHtml(s.name)}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #eef6f6" />
+        <label class="small muted">Class</label><input id="es_class" value="${escapeHtml(s.class)}" style="width:100%;padding:10px;border-radius:8px;border:1px solid #eef6f6" />
+        <div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" id="saveStu">Save</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>`, true);
+      document.getElementById('saveStu').addEventListener('click', ()=>{
+        s.name = document.getElementById('es_name').value.trim(); s.class = document.getElementById('es_class').value.trim();
+        DB.activity.push('Edited student: '+s.name); saveDB(); closeModal(); renderView('students'); toast('Saved');
+      });
+    }
+    function deleteStudent(id){ DB.students = DB.students.filter(s=>s.id!==id); DB.activity.push('Deleted student'); saveDB(); toast('Deleted'); renderView('students');}
+
+    /* ---------- PERFORMANCE (reads student results saved by quiz.html) ---------- */
+    function renderPerformance(container){
+      container.innerHTML = `<h3>Performance</h3><div class="small muted">Student attempts reported from the Student Quiz Portal</div>`;
+      const results = loadResults();
+      if(!results || results.length===0){ container.innerHTML += `<div class="card" style="margin-top:12px"><div class="small muted">No quiz attempts yet</div></div>`; return; }
+
+      // table of results
+      const tableWrap = el('div'); tableWrap.style.marginTop='12px';
+      const rows = results.map(r => `<tr>
+        <td>${escapeHtml(r.studentName||'Unknown')}</td>
+        <td>${escapeHtml(r.studentClass||'—')}</td>
+        <td>${escapeHtml(getQuizTitle(r.quizId) || 'Quiz removed')}</td>
+        <td>${r.score}%</td>
+        <td>${escapeHtml(r.date)}</td>
+        </tr>`).join('');
+      tableWrap.innerHTML = `<table><thead><tr><th>Student</th><th>Class</th><th>Quiz</th><th>Score</th><th>Date</th></tr></thead><tbody>${rows}</tbody></table>`;
+      container.appendChild(tableWrap);
+
+      // aggregated stats
+      const agg = aggregateResults(results);
+      const aggCard = el('div','card'); aggCard.style.marginTop='12px';
+      aggCard.innerHTML = `<h4>Aggregated</h4>
+        <div style="display:flex;gap:12px;margin-top:8px">
+          <div style="flex:1"><div class="small muted">Attempts</div><div style="font-weight:900">${results.length}</div></div>
+          <div style="flex:1"><div class="small muted">Avg score</div><div style="font-weight:900">${agg.avg}%</div></div>
+          <div style="flex:1"><div class="small muted">Unique students</div><div style="font-weight:900">${agg.uniqueStudents}</div></div>
+        </div>`;
+      container.appendChild(aggCard);
+
+      // per-quiz pass rate / chart-like bars
+      const perQuiz = el('div','card'); perQuiz.style.marginTop='12px'; perQuiz.innerHTML = `<h4>Per-quiz summary</h4>`;
+      Object.keys(agg.byQuiz).forEach(qid=>{
+        const qdata = agg.byQuiz[qid];
+        perQuiz.innerHTML += `<div style="margin-top:10px"><div style="display:flex;justify-content:space-between"><div><strong>${escapeHtml(getQuizTitle(qid) || 'Deleted')}</strong><div class="small muted">${qdata.attempts} attempts</div></div><div style="font-weight:900">${Math.round(qdata.avg)}%</div></div>
+          <div class="progress" style="margin-top:8px"><i style="width:${Math.round(qdata.avg)}%"></i></div></div>`;
+      });
+      container.appendChild(perQuiz);
+    }
+
+    function aggregateResults(results){
+      if(!results||results.length===0) return {avg:0,uniqueStudents:0,byQuiz:{}};
+      const byQuiz = {};
+      const studentsSet = new Set();
+      let total = 0;
+      results.forEach(r=>{
+        studentsSet.add((r.studentName||'').toLowerCase());
+        total += r.score;
+        if(!byQuiz[r.quizId]) byQuiz[r.quizId] = { attempts:0, total:0 };
+        byQuiz[r.quizId].attempts++; byQuiz[r.quizId].total += r.score;
+      });
+      Object.keys(byQuiz).forEach(k => byQuiz[k].avg = byQuiz[k].attempts ? (byQuiz[k].total / byQuiz[k].attempts) : 0);
+      return { avg: Math.round(total / results.length), uniqueStudents: studentsSet.size, byQuiz };
+    }
+
+    /* ---------- UTILITIES: modal, helpers, import/export ---------- */
+    function openModal(html, lock=false){
+      const overlay = document.getElementById('modalOverlay'); const inner = document.getElementById('modalInner');
+      inner.innerHTML = html;
+      overlay.style.display = 'flex';
+      if(!lock) inner.insertAdjacentHTML('beforeend','<div style="margin-top:12px"><button class="btn ghost" onclick="closeModal()">Close</button></div>');
+    }
+    function closeModal(){ document.getElementById('modalOverlay').style.display='none'; document.getElementById('modalInner').innerHTML=''; }
+
+    function escapeHtml(s){ return (s||'').toString().replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'})[c]); }
+    function el(tag, cls){ const d=document.createElement(tag); if(cls) d.className=cls; return d; }
+
+    function deleteResource(id){ DB.resources = DB.resources.filter(r=>r.id!==id); DB.activity.push('Deleted resource'); saveDB(); toast('Deleted'); renderView('resources'); }
+    function exportAll(){
+      // export DB and results as JSON bundle
+      const bundle = { db:DB, results: loadResults(), exportedAt: new Date().toISOString() };
+      const blob = new Blob([JSON.stringify(bundle,null,2)], { type:'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href=url; a.download = `disasteredu-export-${new Date().toISOString().slice(0,10)}.json`; a.click(); URL.revokeObjectURL(url);
+      toast('Exported JSON');
+    }
+
+    function openJsonImportDialog(){
+      openModal(`<h3>Import bundle</h3><div class="small muted">Paste bundle JSON exported from admin or student.</div><textarea id="importBundle" style="width:100%;height:240px;padding:10px;border-radius:8px;border:1px solid #eef6f6"></textarea><div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary" id="importBundleBtn">Import</button><button class="btn ghost" onclick="closeModal()">Cancel</button></div>`);
+      document.getElementById('importBundleBtn').addEventListener('click', ()=>{
+        try{
+          const bundle = JSON.parse(document.getElementById('importBundle').value);
+          if(bundle.db) DB = bundle.db;
+          if(bundle.results) { localStorage.setItem(RESULTS_KEY, JSON.stringify(bundle.results)); RESULTS = bundle.results; }
+          saveDB(); saveResults(); closeModal(); toast('Imported bundle'); renderView('dashboard');
+        }catch(e){ toast('Invalid JSON'); }
+      });
+    }
+
+    /* ---------- BOOT ---------- */
+    function init(){
+      document.getElementById('lastUpdated').textContent = 'Last saved: ' + new Date().toLocaleString();
+      renderView('dashboard');
+    }
+    init();
+
+    // expose helper to student portal dev/debugging
+    window.__ADMIN_DB_KEY = DB_KEY;
+    window.__ADMIN_RESULTS_KEY = RESULTS_KEY;
+
+    // small utilities used by student portal too (not necessary)
+    function loadResultsLocal(){ return loadResults(); }
+    function getDbSnapshot(){ return DB; }
+
+    // allow external refresh (student portal may push results)
+    window.refreshAdmin = function(){ DB = loadDB(); RESULTS = loadResults(); updateDashboardWidgets(); renderView('performance'); };
+
+    // listen for storage events (synchronizes across tabs)
+    window.addEventListener('storage', (e)=>{
+      if(e.key===RESULTS_KEY || e.key===DB_KEY){
+        DB = loadDB();
+        RESULTS = loadResults();
+        updateDashboardWidgets();
+        // if performance view visible, re-render
+        const perfVisible = document.getElementById('nav-performance').classList.contains('active');
+        if(perfVisible) renderView('performance');
+      }
+    });
+
+    /* tiny helpers */
+    function loadResults(){ try{return JSON.parse(localStorage.getItem(RESULTS_KEY)) || [];}catch(e){return [];} }
+  </script>
+</body>
+</html>

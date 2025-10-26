@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Disaster Info Hub</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 font-sans">
+  
+  <!-- Header -->
+  <header class="bg-blue-600 text-white p-5 shadow-md">
+    <h1 class="text-3xl font-bold text-center">🌍 Natural Disaster Information Hub</h1>
+    <p class="text-center mt-2 text-blue-200">Learn about disasters, impacts & safety measures</p>
+  </header>
+
+  <!-- Search -->
+  <div class="p-5 max-w-4xl mx-auto">
+    <input type="text" id="searchInput" placeholder="🔍 Search disasters..."
+      class="w-full p-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-400 outline-none">
+  </div>
+
+  <!-- Disaster Cards+Next Button  -->
+  <div id="disasterGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 p-6 max-w-6xl mx-auto">
+
+    <!-- Example Card -->
+    <div class="bg-white rounded-2xl shadow-lg  p-5  hover:shadow-2xl transition cursor-pointer">
+      <img src= "Flood.jpg" 
+           alt="Flood" class="w-full h-40 object-cover rounded-xl">
+      <h2 class="text-xl font-semibold mt-4">Floods</h2>
+      <p class="text-gray-600 mt-2 text-sm">
+        Floods occur due to heavy rains, river overflow, or dam breaks. They can cause loss of life, displacement, and property damage.
+      </p>
+      <button type="button"
+      onclick="window.location.href='floods.html'"
+       class="mt-4 w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600 ">Learn More</button>    
+      </div>
+
+    <div class="bg-white rounded-2xl shadow-lg p-5 hover:shadow-2xl transition cursor-pointer">   
+      <img src= "Earthquake.jpg"   
+           alt="Earthquake" class="w-full h-40 object-cover rounded-xl">
+      <h2 class="text-xl font-semibold mt-4">Earthquakes</h2>
+      <p class="text-gray-600 mt-2 text-sm">
+        Earthquakes are sudden shaking of the ground caused by tectonic movements. They damage infrastructure and can trigger tsunamis or landslides.
+      </p>
+      <button type="button"
+      onclick="window.location.href='earthquake.html'"
+       class="mt-4 w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600">Learn More</button>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-lg p-5 hover:shadow-2xl transition cursor-pointer">
+      <img src= "Heatwave.jpg"     
+           alt="Heatwave" class="w-full h-40 object-cover rounded-xl">
+      <h2 class="text-xl font-semibold mt-4">Heatwaves</h2>
+      <p class="text-gray-600 mt-2 text-sm">
+        Heatwaves are prolonged periods of excessive heat. They impact health, agriculture, and water supply, especially in vulnerable regions.
+      </p>
+      <button type="button"
+      onclick="window.location.href='heatwave.html'"  
+
+      class="mt-4 w-full bg-blue-500 text-white py-2 rounded-xl hover:bg-blue-600">Learn More</button>    
+    </div>
+    </div>
+
+  <div class="text-center mt-8 mb-10">
+    <a href="more_disasters.html" 
+       class="inline-flex items-center bg-blue-600 text-white px-6 py-3 rounded-full shadow-md hover:bg-blue-700 transition">
+      Next <span class="ml-2">➡️</span>
+    </a>
+  </div>
+
+
+  
+
+    
+
+
+
+
+  <!-- Footer -->
+  <footer class="bg-gray-900 text-gray-300 text-center p-5 mt-10">
+    <p>© 2025 Disaster Info Hub | Designed for Awareness</p>
+  </footer>
+
+  <!-- Search Script -->
+  <script>
+    const searchInput = document.getElementById("searchInput");
+    const disasterGrid = document.getElementById("disasterGrid").children;
+
+    searchInput.addEventListener("keyup", function() {
+      let filter = searchInput.value.toLowerCase();
+      Array.from(disasterGrid).forEach(card => {
+        let text = card.innerText.toLowerCase();
+        card.style.display = text.includes(filter) ? "block" : "none";
+      });
+    });
+  </script>
+</body>
+</html>
+

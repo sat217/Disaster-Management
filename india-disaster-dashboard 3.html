@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title> Disaster Finder</title>
+    <!-- Load Leaflet for maps -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <!-- Load Tailwind CSS from CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Use Inter font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        #map {
+            height: 500px;
+        }
+        /* Custom styles for Leaflet popups */
+        .leaflet-popup-content-wrapper {
+            @apply rounded-xl shadow-lg;
+        }
+        .leaflet-popup-content {
+            @apply p-4;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 p-4 sm:p-8">
+    <div class="max-w-4xl mx-auto bg-white rounded-2xl shadow-xl p-6 sm:p-10 border border-gray-200">
+        <h1 class="text-3xl sm:text-4xl font-bold text-center text-green-700 mb-2"> Disaster Finder</h1>
+        <p class="text-center text-gray-500 mb-6 sm:mb-8">Select a Location to View  Disasters</p>
+
+        <!-- Map Container -->
+        <div id="map" class="rounded-xl shadow-inner border border-gray-300 mb-6"></div>
+
+        <!-- Selected Location Display -->
+        <p class="text-center text-lg font-medium text-gray-700 mb-6">
+            <strong>Selected Location:</strong> <span id="location" class="text-green-600 font-bold"></span>
+        </p>
+
+        <!-- Search Container -->
+        <div id="search-container" class="mb-8 flex flex-col sm:flex-row items-center space-y-4 sm:space-y-0 sm:space-x-4">
+            <label for="search-input" class="text-gray-600 font-medium whitespace-nowrap">Search for a disaster or state:</label>
+            <input type="text" id="search-input" placeholder="e.g., Flood, Andhra Pradesh" class="flex-grow w-full sm:w-auto px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:outline-none transition duration-200">
+            <button id="search-button" class="w-full sm:w-auto px-6 py-2 bg-green-600 text-white font-semibold rounded-lg shadow-md hover:bg-green-700 transition duration-300 transform hover:scale-105">Search</button>
+        </div>
+
+        <div class="space-y-8">
+            <!-- Disaster List -->
+            <div>
+                <h3 class="text-xl font-semibold text-gray-800 border-b-2 border-green-500 pb-1 mb-4">Disaster Information</h3>
+                <ul id="disaster-list" class="space-y-4"></ul>
+            </div>
+
+            <!-- Search Results List -->
+            <div>
+                <h3 class="text-xl font-semibold text-gray-800 border-b-2 border-green-500 pb-1 mb-4">Search Results</h3>
+                <ul id="search-results-list" class="space-y-4"></ul>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script>
+        // Initialize the map and restrict to India
+        var map = L.map('map').setView([20.5937, 78.9629], 5);
+        
+        // Load OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Restrict map view to India's bounding box
+        var southWest = L.latLng(6.4627, 68.1097),
+            northEast = L.latLng(35.5133, 97.3956),
+            bounds = L.latLngBounds(southWest, northEast);
+        map.setMaxBounds(bounds);
+        map.on('drag', function () {
+            map.panInsideBounds(bounds, { animate: false });
+        });
+
+        // Add marker on click
+        let marker;
+        map.on('click', function (e) {
+            let lat = e.latlng.lat.toFixed(4);
+            let lng = e.latlng.lng.toFixed(4);
+            document.getElementById('location').textContent = `Lat: ${lat}, Lng: ${lng}`;
+            
+            // Remove previous marker if it exists
+            if (marker) {
+                map.removeLayer(marker);
+            }
+
+            // Add new marker
+            marker = L.marker(e.latlng).addTo(map);
+            fetchDisasters(lat, lng);
+        });
+
+        // Disaster data
+        const disasters = {
+            "Andhra Pradesh": [
+                {
+                    type: "Cyclone",
+                    name: "Cyclone Hudhud (2014)",
+                    impact: "Severe coastal damage in Visakhapatnam, Vizianagaram; infrastructure, crops and housing losses.",
+                    relief: "APSDMA & NDMA relief operations, large-scale evacuations and rehabilitation.",
+                    link: "https://disaster.ap.gov.in/",
+                    preparedness: "Use cyclone shelters, secure roofs, follow IMD early warnings and evacuation orders.",
+                    youtube: "https://www.youtube.com/embed/-hO0YyQHvwo"         
+                },
+                {
+                    type: "Flood",
+                    name: "Godavari-Sabari Basin Floods (recurring)",
+                    impact: "Monsoon floods affecting East & West Godavari, road washouts, crop losses and displacement.",
+                    relief: "State flood relief funds, SDRF and community rehabilitation.",
+                    link: "https://disaster.ap.gov.in/",
+                    preparedness: "Embankment maintenance, river monitoring and local rescue boats.",
+                    youtube: "https://www.youtube.com/embed/jYmq4ZnYwMA"   
+                },
+                {
+                    type: "Drought",
+                    name: "Rayalaseema Droughts",
+                    impact: "Prolonged water scarcity in Anantapur and surrounding districts; crop failure and migration.",
+                    relief: "Drought relief packages, NREGA and subsidized fodder support.",
+                    link: "https://agri.ap.gov.in/",
+                    preparedness: "Rainwater harvesting, micro-irrigation and drought-resistant crops.",
+                    youtube: "https://www.youtube.com/embed/IL-LjO3wIHo"              
+                },
+                {
+                    type: "Heatwave",
+                    name: "Coastal & Inland Heatwaves",
+                    impact: "High temperatures cause heat stress, higher mortality among farmers and labourers.",
+                    relief: "Heat action plans, cooling centres, and health advisories.",
+                    link: "https://www.imd.gov.in/",
+                    preparedness: "Hydration, shade, avoid midday work, community alerts.",
+                    youtube: "https://www.youtube.com/embed/fn5dj2epsP4"   
+                }
+            ],
+            "Telangana": [
+                {
+                    type: "Flood",
+                    name: "Hyderabad Urban Floods (2020)",
+                    impact: "Flash floods and urban inundation affecting homes, transport and markets.",
+                    relief: "GHMC rescue operations, SDRF and local relief camps.",
+                    link: "https://tsdps.telangana.gov.in/",
+                    preparedness: "Drainage upkeep, avoid basement parking during heavy rain, heed warnings.",
+                    youtube: "https://www.youtube.com/embed/KohsJyP66Xc"
+                },
+                {
+                    type: "Drought",
+                    name: "Deccan Plateau Water Stress",
+                    impact: "Intermittent droughts, groundwater depletion and agricultural distress in rainfed areas.",
+                    relief: "Watershed development, micro-irrigation subsidies and farmer support schemes.",
+                    link: "https://raitamitra.telangana.gov.in/",
+                    preparedness: "Harvest rainwater, use drip irrigation, crop planning.",
+                    youtube: "https://www.youtube.com/embed/rWMwal_T8sA"       
+                },
+                {
+                    type: "Heatwave",
+                    name: "Telangana Heat Events",
+                    impact: "Urban and rural heat stress leading to health emergencies.",
+                    relief: "Health outreach, public advisories and temporary hydration camps.",
+                    link: "https://www.imd.gov.in/",
+                    preparedness: "Avoid midday exposure, hydration and public cooling points.",
+                    youtube: "https://www.youtube.com/embed/4DoZM4_rowo"       
+                }
+            ],
+            "Karnataka": [
+                {
+                    type: "Flood",
+                    name: "Kodagu Floods & Landslides (2018)",
+                    impact: "Massive landslides and flooding in Kodagu led to displacement and infrastructure loss.",
+                    relief: "State SDRF, army rescue and rehabilitation packages.",
+                    link: "https://ksndmc.org/",
+                    preparedness: "Slope stabilization, early warning and evacuation of vulnerable villages.",
+                    youtube: "https://www.youtube.com/embed/p66Giq05q-I"
+                },
+                {
+                    type: "Drought",
+                    name: "North Karnataka Droughts",
+                    impact: "Chronic rainfall deficits in Bijapur, Bagalkot and Raichur; crop failures and water shortages.",
+                    relief: "Drought relief funds, NREGS and farmer support.",
+                    link: "https://raitamitra.karnataka.gov.in/",
+                    preparedness: "Water conservation, crop diversification and drip irrigation.",
+                    youtube: "https://www.youtube.com/embed/3DRg72Pn_a8"
+                },
+                {
+                    type: "Urban Flood",
+                    name: "Bengaluru Urban Flooding (recurring)",
+                    impact: "Drainage congestion and heavy rains cause transport paralysis and property damage.",
+                    relief: "Municipal relief, temporary shelters and cleanup.",
+                    link: "https://karnataka.gov.in/",
+                    preparedness: "Stormwater planning, protect electricals, have evacuation plan.",
+                    youtube: "https://www.youtube.com/embed/KQfNTzHkkwg"        
+                }
+            ],
+            "Kerala": [
+                {
+                    type: "Flood",
+                    name: "Kerala Floods (2018)",
+                    impact: "Widespread inundation across many districts; major displacement and infrastructure loss.",
+                    relief: "State & central rescue (Navy/NDMA), cash relief, rehabilitation programmes.",
+                    link: "https://sdma.kerala.gov.in/",
+                    preparedness: "Reservoir operation protocols, community early warnings and shelter mapping.",
+                    youtube: "https://www.youtube.com/embed/-kHEI_76Bnc"       
+                },
+                {
+                    type: "Landslide",
+                    name: "Western Ghats Landslides",
+                    impact: "Slope failures causing fatalities and road damage in Idukki, Wayanad.",
+                    relief: "Rescue teams, slope restoration programs and relocation where necessary.",
+                    link: "https://sdma.kerala.gov.in/",
+                    preparedness: "Avoid building on steep slopes, maintain drainage and afforestation.",
+                    youtube: "https://www.youtube.com/embed/JFq0R_ojSS4"
+                },
+                {
+                    type: "Tsunami Risk",
+                    name: "Indian Ocean Tsunami Hazard (coastal risk)",
+                    impact: "Low-frequency but high-impact tsunami risk along southern coastlines.",
+                    relief: "Coastal early warning systems and mapped evacuation routes.",
+                    link: "https://ndma.gov.in/",
+                    preparedness: "Know evacuation zones, vertical shelters and community drills.",
+                    youtube: "https://www.youtube.com/embed/TzMDTTJUfRM"    
+                }
+            ],
+            "Tamil Nadu": [
+                {
+                    type: "Cyclone",
+                    name: "Cyclone Gaja (2018)",
+                    impact: "Severe damage in Nagapattinam, Tiruvarur, Thanjavur; crop & housing losses.",
+                    relief: "State SDRF, NDMA aid and community restoration programs.",
+                    link: "https://tnsdma.tn.gov.in/",
+                    preparedness: "Use cyclone shelters, secure boats and heed IMD warnings.",
+                    youtube: "https://www.youtube.com/embed/dIiIX6L-0pc"
+                },
+                {
+                    type: "Urban Flood",
+                    name: "Chennai Floods (2015)",
+                    impact: "Severe urban inundation disrupting millions, economic and property losses.",
+                    relief: "Mass rescue and rehabilitation, municipal and central relief.",
+                    link: "https://tn.gov.in/",
+                    preparedness: "Protect documents, move to higher floors and follow evacuation maps.",
+                    youtube: "https://www.youtube.com/embed/B9QTIdwxByg"
+                },
+                {
+                    type: "Drought",
+                    name: "Interior TN Drought Episodes",
+                    impact: "Rainfall deficit in districts like Erode and Salem affecting agriculture & industry.",
+                    relief: "Drinking water schemes and agricultural aid packages.",
+                    link: "https://www.tnagrisnet.tn.gov.in/",
+                    preparedness: "Groundwater recharge and drought-tolerant crops.",
+                    youtube: "https://www.youtube.com/embed/B-cIqSsVBBU"    
+                }
+            ],
+            "Goa": [
+                {
+                    type: "Flash Flood",
+                    name: "Monsoon Flash Floods",
+                    impact: "Intense rainfall causes urban & river flooding, affects tourism and local businesses.",
+                    relief: "Municipal relief, SDRF and temporary shelters.",
+                    link: "https://goa.gov.in/",
+                    preparedness: "Drainage clearance, tourist advisories and evacuation of low-lying resorts.",
+                    youtube: "https://www.youtube.com/embed/-UaGHgE76iE"  
+                },
+                {
+                    type: "Coastal Erosion",
+                    name: "Beach Erosion & Storm Surge",
+                    impact: "Loss of beach area and damage to coastal infrastructure.",
+                    relief: "Coastal conservation projects and local compensation.",
+                    link: "https://goa.gov.in/",
+                    preparedness: "Avoid construction too close to shore, dune restoration.",
+                    youtube: "https://www.youtube.com/embed/VNwo2bhHDi4"   
+                }
+            ],
+            "Maharashtra": [
+                {
+                    type: "Drought",
+                    name: "Marathwada & Vidarbha Droughts",
+                    impact: "Severe agricultural distress, water scarcity and farmer crises.",
+                    relief: "State drought funds, PM-KISAN support and relief measures.",
+                    link: "https://krishi.maharashtra.gov.in/",
+                    preparedness: "Rainwater harvesting, micro-irrigation and crop insurance enrollment.",
+                    youtube: "https://www.youtube.com/embed/JIRYNwmeiKo"
+                },
+                {
+                    type: "Urban Flood",
+                    name: "Mumbai Monsoon Flooding (recurring)",
+                    impact: "Transport paralysis, suburban inundation and economic disruption.",
+                    relief: "Municipal relief, temporary shelters and cleanup operations.",
+                    link: "https://maharashtra.gov.in/",
+                    preparedness: "Avoid travel during advisories, protect electrical equipment.",
+                    youtube: "https://www.youtube.com/embed/S951pSfQcMA"
+                },
+                {
+                    type: "Cyclone",
+                    name: "Konkan Coast Cyclone Effects",
+                    impact: "Coastal damage and fishing livelihood losses in Ratnagiri and Sindhudurg.",
+                    relief: "Coastal shelters and state relief funds.",
+                    link: "https://maharashtracmoc.gov.in/",
+                    preparedness: "Fisher warnings, shelter network and early evacuation.",
+                    youtube: "https://www.youtube.com/embed/uxUiEXZbNoU"   
+                }
+            ],
+            "Gujarat": [
+                {
+                    type: "Earthquake",
+                    name: "Bhuj Earthquake (2001 legacy)",
+                    impact: "Devastating 26 Jan earthquake struck Bhuj with intense destruction.",
+                    relief: "Reconstruction programs and retrofitting public buildings.",
+                    link: "https://gujaratdisaster.gujarat.gov.in/",
+                    preparedness: "Strict building codes and earthquake drills.",
+                    youtube: "https://www.youtube.com/embed/f18rVzAOecA"
+                },
+                {
+                    type: "Cyclone",
+                    name: "Arabian Sea Cyclone Impacts",
+                    impact: "Storm surge & heavy rains affecting coastal communities.",
+                    relief: "Coastal evacuation, fisher advisories and SDRF response.",
+                    link: "https://gujaratdesa.gujarat.gov.in/",
+                    preparedness: "Cyclone shelters, early warnings and fisher radios.",
+                    youtube: "https://www.youtube.com/embed/DL2iQNITpB8"
+                },
+                {
+                    type: "Drought",
+                    name: "Saurashtra Drought Episodes",
+                    impact: "Rainfall shortfalls causing water scarcity and agricultural losses.",
+                    relief: "Tank renovation, water supply interventions and subsidies.",
+                    link: "https://ikrishi.gujarat.gov.in/",
+                    preparedness: "Drip irrigation and watershed measures.",
+                    youtube: "https://www.youtube.com/embed/TVo0GnKCEE8" 
+                }
+            ],
+            "Rajasthan": [
+                {
+                    type: "Drought",
+                    name: "Rajasthan's Water Resilience",
+                    impact: "Chronic water scarcity, fodder depletion and crop failures in western districts.",
+                    relief: "State drought relief, water tankers and groundwater recharge programs.",
+                    link: "https://rajasthan.gov.in/",
+                    preparedness: "Check dams, rainwater harvesting and drought-adapted cropping.",
+                    youtube: "https://www.youtube.com/embed/Es4OU9rLnco"   
+                },
+                {
+                    type: "Heatwave",
+                    name: "Extreme Desert Heat",
+                    impact: "Very high temperatures lead to heat stress and livestock losses.",
+                    relief: "Cooling centres, public heat advisories and health services.",
+                    link: "https://www.imd.gov.in/",
+                    preparedness: "Hydration, shade and scheduled outdoor work times.",
+                    youtube: "https://www.youtube.com/embed/F9zU4qMWXCE"  
+                },
+                {
+                    type: "Flash Flood",
+                    name: "Eastern Rajasthan Flash Floods",
+                    impact: "Localized intense rainfall leads to sudden floods in plains and river valleys.",
+                    relief: "Temporary shelters and SDRF assistance.",
+                    link: "https://rajasthan.gov.in/",
+                    preparedness: "Drainage improvement and early warning dissemination.",
+                    youtube: "https://www.youtube.com/embed/TQmkjTizjZg"   
+                }
+            ],
+            "Madhya Pradesh": [
+                {
+                    type: "Drought",
+                    name: "Malwa & Bundelkhand Droughts",
+                    impact: "Recurring rainfall deficits causing crop failures and migration.",
+                    relief: "Drought relief packages, fodder distribution and livelihood schemes.",
+                    link: "https://mpkrishi.mp.gov.in/",
+                    preparedness: "Water conservation, tank repairs and micro-irrigation.",
+                    youtube: "https://www.youtube.com/embed/FvXsekOnCsA"
+                },
+                {
+                    type: "Flood",
+                    name: "Narmada Basin Flooding",
+                    impact: "Seasonal inundation affecting riverside communities and agriculture.",
+                    relief: "River basin management and SDRF responses.",
+                    link: "https://mp.gov.in/",
+                    preparedness: "Floodplain zoning, warning systems and evacuation maps.",
+                    youtube: "https://www.youtube.com/embed/GqmP_MHPo7Y"
+                },
+                {
+                    type: "Heatwave",
+                    name: "Central India Heat Events",
+                    impact: "High temperatures affecting labour productivity and health.",
+                    relief: "Public advisories and cooling measures.",
+                    link: "https://mp.gov.in/",
+                    preparedness: "Hydration stations and adjusted work schedules.",
+                    youtube: "https://www.youtube.com/embed/csKOTdgukkk"
+                }
+            ],
+            "Chhattisgarh": [
+                {
+                    type: "Flood",
+                    name: "Mahanadi Basin Floods",
+                    impact: "Monsoon floods in low-lying districts cause road disruptions and crop damage.",
+                    relief: "State SDRF and temporary relief camps.",
+                    link: "https://sdma.cg.gov.in/",
+                    preparedness: "River monitoring, embankment upkeep and community drills.",
+                    youtube: "https://www.youtube.com/embed/4VVBB46N6Us"   
+                },
+                {
+                    type: "Forest Fire",
+                    name: "Seasonal Forest Fires",
+                    impact: "Loss of forest cover, wildlife habitat damage and air quality degradation.",
+                    relief: "Forest department firefighting squads and local relief.",
+                    link: "https://forest.cg.gov.in/",
+                    preparedness: "Firebreaks, patrols and community awareness.",
+                    youtube: "https://www.youtube.com/embed/stJrAmGX5DA"    
+                }
+            ],
+            "Jharkhand": [
+                {
+                    type: "Flood",
+                    name: "Damodar & Subarnarekha Floods",
+                    impact: "Monsoon floods affecting Dhanbad and Bokaro; infrastructure and agriculture losses.",
+                    relief: "State SDRF and community rehabilitation.",
+                    link: "https://jhrdc.in/",
+                    preparedness: "Dam monitoring, embankment upkeep and early warnings.",
+                    youtube: "https://www.youtube.com/embed/4UFO5v3WIdc"  
+                },
+                {
+                    type: "Drought",
+                    name: "Palamu & Southern Jharkhand Droughts",
+                    impact: "Groundwater depletion and crop stress in Palamu and Garhwa.",
+                    relief: "Irrigation schemes and drought support.",
+                    link: "https://jhrdc.in/",
+                    preparedness: "Rainwater harvesting and watershed treatments.",
+                    youtube: "https://www.youtube.com/embed/k2omBXoV-5s"   
+                }
+            ],
+            "Bihar": [
+                {
+                    type: "Flood",
+                    name: "Kosi River Flooding (recurring)",
+                    impact: "Large-scale inundation in north Bihar; farmland and village losses.",
+                    relief: "State relief, SDRF and central assistance.",
+                    link: "http://disastermgmt.bih.nic.in/",
+                    preparedness: "Raised houses, boats and community warning networks.",
+                    youtube: "https://www.youtube.com/embed/n9htaAjm6VE"
+                },
+                {
+                    type: "Heatwave",
+                    name: "Seasonal Loo Heatwaves",
+                    impact: "High deaths due to heatwaves, particularly in rural populations.",
+                    relief: "Heat action programs and public advisories.",
+                    link: "https://www.imd.gov.in/",
+                    preparedness: "Hydration drives, shaded work periods and community outreach.",
+                    youtube: "https://www.youtube.com/embed/hO9PDyJZNIc"  
+                }
+            ],
+            "West Bengal": [
+                {
+                    type: "Urban Flood",
+                    name: "Kolkata Monsoon Waterlogging",
+                    impact: "Waterlogging in low-lying pockets during heavy rains.",
+                    relief: "Pumping stations, rescue teams, disaster helplines.",
+                    link: "https://kmcgov.in/",
+                    preparedness: "Upgrade drainage, pumps, and warning systems.",
+                    youtube: "https://www.youtube.com/embed/b5k-ur8Svqs"
+                },
+                {
+                    type: "Landslide",
+                    name: "Darjeeling Hills Landslips",
+                    impact: "Slope failures damaging tea plantations and roads.",
+                    relief: "Relief camps and slope stabilization.",
+                    link: "https://sdma.wb.gov.in/",
+                    preparedness: "Retaining walls, drainage control and hazard mapping.",
+                    youtube: "https://www.youtube.com/embed/Hbj9IcswF24"
+                },
+                {
+                    type: "Cyclone",
+                    name: "Cyclone Amphan (2020)",
+                    impact: "Severe damage in Sundarbans and coastal districts.",
+                    relief: "Large-scale evacuation and NDMA-led rehabilitation.",
+                    link: "https://wbdmd.gov.in/",
+                    preparedness: "Mangrove protection and cyclone shelters.",
+                    youtube: "https://www.youtube.com/embed/Mg1x9_3Yqi0"
+                }
+            ],
+            "Sikkim": [
+                {
+                    type: "Landslide",
+                    name: "Monsoon Landslides",
+                    impact: "Slope failures in East & South Sikkim disrupt connectivity and damage homesteads.",
+                    relief: "Road clearance and temporary shelters via state SDRF.",
+                    link: "https://sikkim.gov.in/",
+                    preparedness: "Retaining structures and early warning for vulnerable villages.",
+                    youtube: "https://www.youtube.com/embed/TXxNxjZVexo"  
+                },
+                {
+                    type: "Glacial Lake Outburst",
+                    name: "GLOF Risk",
+                    impact: "Potential downstream flooding from glacial lake breaches affecting Teesta valley.",
+                    relief: "Monitoring and evacuation planning led by state & central agencies.",
+                    link: "https://sikkim.gov.in/",
+                    preparedness: "GLOF mapping and early sensor deployment.",
+                    youtube: "https://www.youtube.com/embed/LOsuRU-CR_4"    
+                }
+            ],
+            "Assam": [
+                {
+                    type: "Flood",
+                    name: "Brahmaputra & Barak Floods (annual)",
+                    impact: "Large-scale monsoon flooding affecting millions in Assam, including Kaziranga and Majuli.",
+                    relief: "ASDMA coordinates rescue & relief; NDRF deployed in major events.",
+                    link: "http://asdma.gov.in/",
+                    preparedness: "Raised platforms, flood shelters and boat rescue teams.",
+                    youtube: "https://www.youtube.com/embed/vyrIDMxvRvY"
+                },
+                {
+                    type: "Erosion",
+                    name: "Riverbank Erosion",
+                    impact: "Loss of agricultural land and settlements along shifting riverbanks.",
+                    relief: "Compensation and bank stabilization projects.",
+                    link: "http://asdma.gov.in/",
+                    preparedness: "Afforestation and structural bank protection.",
+                    youtube: "https://www.youtube.com/embed/NUpDdS0u7Mk"    
+                },
+                {
+                    type: "Earthquake",
+                    name: "Seismic Activity (Himalayan influence)",
+                    impact: "Periodic tremors and seismic risk especially in north Assam & hill areas.",
+                    relief: "NDMA coordination and retrofitting programs.",
+                    link: "https://ndma.gov.in/",
+                    preparedness: "Seismic-resistant construction and awareness campaigns.",
+                    youtube: "https://www.youtube.com/embed/pBeS9CsywL4"      
+                }
+            ],
+            "Arunachal Pradesh": [
+                {
+                    type: "Landslide",
+                    name: "Monsoon Slope Failures",
+                    impact: "Frequent landslides blocking highways & isolating communities.",
+                    relief: "BRO & state emergency teams clear roads and assist relief.",
+                    link: "https://disastermanagement.arunachal.gov.in/",
+                    preparedness: "Afforestation, drainage and early rainfall alerts.",
+                    youtube: "https://www.youtube.com/embed/YM7u72Pe76Q"
+                },
+                {
+                    type: "Earthquake",
+                    name: "Seismic Disturbances",
+                    impact: "Tremors impacting remote infrastructure and border settlements.",
+                    relief: "NDMA & local administration response and rescue.",
+                    link: "https://ndma.gov.in/",
+                    preparedness: "Earthquake-resistant construction and drills.",
+                    youtube: "https://www.youtube.com/embed/XtKapPcoTXY"   
+                }
+            ],
+            "Nagaland": [
+                {
+                    type: "Landslide",
+                    name: "Kohima & Hilly Landslides",
+                    impact: "Monsoon landslips disrupt highways and damage hillside homes.",
+                    relief: "State disaster response and BRO assistance for clearance.",
+                    link: "https://nagaland.gov.in/",
+                    preparedness: "Slope protection, afforestation and drainage improvement.",
+                    youtube: "https://www.youtube.com/embed/RTNyUQXMYGM"  
+                }
+            ],
+            "Manipur": [
+                {
+                    type: "Earthquake",
+                    name: "Imphal Seismic Events",
+                    impact: "Occasional quakes damage buildings and cause public panic in valley regions.",
+                    relief: "Army & NDRF assistance along with state relief teams.",
+                    link: "https://manipur.gov.in/",
+                    preparedness: "Safe construction practices and community drills.",
+                    youtube: "https://www.youtube.com/embed/sXxA4AZEbog"
+                },
+                {
+                    type: "Flood/Landslide",
+                    name: "Monsoon Flood & Slope Failures",
+                    impact: "Heavy rains cause flash floods and landslides affecting NH routes.",
+                    relief: "Local rescue and relief operations with SDRF support.",
+                    link: "https://manipur.gov.in/",
+                    preparedness: "Local evacuation plans and slope maintenance.",
+                    youtube: "https://www.youtube.com/embed/bn-z5S0KCzw"   
+                }
+            ],
+            "Meghalaya": [
+                {
+                    type: "Flash Flood",
+                    name: "Jaintia & Khasi Hills Flash Floods",
+                    impact: "Rapid runoff causes flood surges that damage villages and block roads.",
+                    relief: "State SDRF and rescue operations with temporary shelters.",
+                    link: "https://megagov.in/",
+                    preparedness: "Catchment management and early warning dissemination.",
+                    youtube: "https://www.youtube.com/embed/W64H_0OqOXw"   
+                },
+                {
+                    type: "Landslide",
+                    name: "Shillong Hills Landslips",
+                    impact: "Hillslope failures in East Khasi Hills during intense rainfall.",
+                    relief: "PWD and disaster relief for clearance and resettlement.",
+                    link: "https://megagov.in/",
+                    preparedness: "Controlled drainage and retaining structures.",      
+                    youtube: "https://www.youtube.com/embed/Pr_Un0eyYm4"   
+                }
+            ],
+            "Mizoram": [
+                {
+                    type: "Landslide",
+                    name: "Aizawl & Hilly Landslides",
+                    impact: "Monsoon-triggered landslips blocking roads and damaging houses.",
+                    relief: "State SDRF and community support for clearance & shelters.",
+                    link: "https://mizoram.gov.in/",
+                    preparedness: "Slope drainage and small retaining structures.",
+                    youtube: "https://www.youtube.com/embed/b2bMhcD4bZ4"  
+                }
+            ],
+            "Tripura": [
+                {
+                    type: "Flood",
+                    name: "Agartala Monsoon Flooding",
+                    impact: "Flash floods and waterlogging in urban & low-lying rural areas.",
+                    relief: "State relief teams and temporary shelters.",
+                    link: "https://tripura.gov.in/",
+                    preparedness: "Raised platforms, early warning and local evacuation.",
+                    youtube: "https://www.youtube.com/embed/iQa0VFtLAd8"  
+                }
+            ],
+            "Uttar Pradesh": [
+                {
+                    type: "Flood",
+                    name: "Ganga & Yamuna Basin Floods",
+                    impact: "Seasonal inundation across eastern & central UP affecting millions.",
+                    relief: "State SDRF, NDRF and large-scale evacuations in severe years.",
+                    link: "https://up.gov.in/",
+                    preparedness: "Embankment strengthening, raised shelters and early warnings.",
+                    youtube: "https://www.youtube.com/embed/hfFh8wfU8fs"  
+                },
+                {
+                    type: "Heatwave",
+                    name: "Northern Plains Heat Events",
+                    impact: "High mortality risk for outdoor labor during peak summer months.",
+                    relief: "Heat action advisories and public health interventions.",
+                    link: "https://ndma.gov.in/",
+                    preparedness: "Hydration points, changed work schedules and public messaging.",
+                    youtube: "https://www.youtube.com/embed/cqSOSTLjarU"  
+                }
+            ],
+            "Punjab": [
+                {
+                    type: "Flood",
+                    name: "Monsoon Floods (Rivers Sutlej & Beas)",
+                    impact: "Flooding in low-lying tracts with crop & property damage.",
+                    relief: "Punjab SDRF & state rescue operations.",
+                    link: "https://punjab.gov.in/",
+                    preparedness: "Levee upkeep and community evacuation plans.",
+                    youtube: "https://www.youtube.com/embed/AdWTF0gRfB4"   
+                },
+                {
+                    type: "Air Pollution",
+                    name: "Stubble Burning Smog (seasonal)",
+                    impact: "Severe winter air pollution affecting health in Ludhiana, Amritsar & Patiala.",
+                    relief: "Subsidies for alternative residue management & GRAP actions.",
+                    link: "https://pcb.punjab.gov.in/",
+                    preparedness: "Promote in-situ residue management and control burning.",
+                    youtube: "https://www.youtube.com/embed/U0fdxQSMAtw"  
+                }
+            ],
+            "Haryana": [
+                {
+                    type: "Flood",
+                    name: "Yamuna Floods",
+                    impact: "Overflowing Yamuna inundates low-lying districts causing property & crop loss.",
+                    relief: "District disaster teams and state SDRF responses.",
+                    link: "https://haryana.gov.in/",
+                    preparedness: "River monitoring and levee maintenance.",
+                    youtube: "https://www.youtube.com/embed/eIgyPxMQARY"
+                },
+                {
+                    type: "Dust Storm",
+                    name: "North India Dust Storm Events",
+                    impact: "Severe dust storms reduce visibility and damage crops & infrastructure.",
+                    relief: "NDMA advisories and emergency preparedness.",
+                    link: "https://ndma.gov.in/",
+                    preparedness: "Stay indoors during advisories and secure loose materials.",
+                    youtube: "https://www.youtube.com/embed/qGZzZ1R5OOM"  
+                }
+            ],
+            "Himachal Pradesh": [
+                {
+                    type: "Landslide",
+                    name: "Kinnaur & Shimla Landslides",
+                    impact: "Monsoon landslides damaging highways and causing casualties.",
+                    relief: "BRO, Army and state SDRF operations for rescue and road clearance.",
+                    link: "https://hpsdma.nic.in/",
+                    preparedness: "Slope drainage, retaining walls and hazard mapping.",
+                    youtube: "https://www.youtube.com/embed/fvBhfWE5u84"  
+                },
+                {
+                    type: "Flash Flood",
+                    name: "Himachal Flash Floods",
+                    impact: "Sudden heavy rainfall leads to river surges and infrastructure loss in valleys.",
+                    relief: "State emergency response and NDRF as needed.",
+                    link: "https://ndma.gov.in/",
+                    preparedness: "Monitor rains, avoid river banks during warnings and have evacuation plans.",
+                    youtube: "https://www.youtube.com/embed/aMZSvop5VOA"      
+                }
+            ],
+            "Uttarakhand": [
+                {
+                    type: "Cloudburst/Flash Flood",
+                    name: "Kedarnath Disaster (2013)",
+                    impact: "Cloudburst-triggered flash floods and landslides destroyed Kedarnath and killed thousands.",
+                    relief: "Massive rescue by Army, IAF, NDRF and state teams; long-term rehabilitation.",
+                    link: "https://uk.gov.in/",
+                    preparedness: "Hazard zoning, avoid risky routes in peak rains and use early alerts.",
+                    youtube: "https://www.youtube.com/embed/YsZIPeoVCT8"  
+                },
+                {
+                    type: "Glacial Outburst",
+                    name: "Chamoli Glacial Bursts (2021)",
+                    impact: "Glacial burst led to flash floods and infrastructure damage in Chamoli.",
+                    relief: "ITBP, Army & NDRF deployments; rescue & medical aid.",
+                    link: "https://ndma.gov.in/",
+                    preparedness: "GLOF mapping, early sensor networks and downstream evacuation.",
+                    youtube: "https://www.youtube.com/embed/gG7YjVIX8TA"  
+                }
+            ],
+            "Jammu & Kashmir": [
+                {
+                    type: "Flood",
+                    name: "Kashmir Valley Floods (2014)",
+                    impact: "Severe flooding in Srinagar and surrounding areas, mass displacement.",
+                    relief: "Army, NDRF & state response with relief camps.",
+                    link: "https://jk.gov.in/",
+                    preparedness: "River gauges, raised platforms and evacuation planning.",
+                    youtube: "https://www.youtube.com/embed/DVcfjWLeXqg"
+                },
+                {
+                    type: "Avalanche",
+                    name: "Himalayan Avalanche Events",
+                    impact: "Avalanches in high altitude areas threaten lives of locals & security forces.",
+                    relief: "Army & ITBP search & rescue; preventive patrols in winter.",
+                    link: "https://ndma.gov.in/",
+                    preparedness: "Avoid risky slopes in heavy snow, follow advisories.",
+                    youtube: "https://www.youtube.com/embed/F-AsKfuHWIk"  
+                },
+                {
+                    type: "Earthquake",
+                    name: "Kashmir Region Seismic Risk",
+                    impact: "Potential seismic events can trigger landslides and structural damage.",
+                    relief: "NDMA & state rehabilitation, retrofitting programmes.",
+                    link: "https://ndma.gov.in/",
+                    preparedness: "Seismic-resistant construction and community earthquake drills.",
+                    youtube: "https://www.youtube.com/embed/6ZNfrDMaeUc"
+                }
+            ],
+            "Ladakh": [
+                {
+                    type: "Flash Flood",
+                    name: "Leh Cloudburst & Flash Flood (2010)",
+                    impact: "Flash floods destroyed large parts of Leh town with heavy casualties.",
+                    relief: "Army & Air Force emergency relief and long-term rebuilding.",
+                    link: "https://ndma.gov.in/",
+                    preparedness: "Avoid river valleys during sudden storms and follow local advisories.",
+                    youtube: "https://www.youtube.com/embed/SmUpX7eXALY"
+                },
+                {
+                    type: "Avalanche",
+                    name: "High-altitude Avalanche Risk",
+                    impact: "Frequent avalanches endanger soldiers and inhabitants along Himalayan passes.",
+                    relief: "Army rescue and preventive measures in high altitudes.",
+                    link: "https://ndma.gov.in/",
+                    preparedness: "Avalanche forecasting and controlled-release techniques where available.",
+                    youtube: "https://www.youtube.com/embed/Zp8qCV5sa4o" 
+                }
+            ]
+        };
+
+        const stateCoordinates = {
+            "Andhra Pradesh": [15.9129, 79.7400],
+            "Telangana": [18.1124, 79.0193],
+            "Karnataka": [15.3173, 75.7139],
+            "Kerala": [10.8505, 76.2711],
+            "Tamil Nadu": [11.1271, 78.6569],
+            "Goa": [15.2993, 74.1240],
+            "Maharashtra": [19.7515, 75.7139],
+            "Gujarat": [22.2587, 71.1924],
+            "Rajasthan": [27.0238, 74.2179],
+            "Madhya Pradesh": [22.9734, 78.6569],
+            "Chhattisgarh": [21.2787, 81.8661],
+            "Jharkhand": [23.6102, 85.2799],
+            "Bihar": [25.0961, 85.3131],
+            "West Bengal": [22.9868, 87.8550],
+            "Sikkim": [27.5330, 88.5122],
+            "Assam": [26.2006, 92.9376],
+            "Arunachal Pradesh": [27.5330, 96.1110],
+            "Nagaland": [26.1584, 94.5624],
+            "Manipur": [24.6637, 93.9063],
+            "Meghalaya": [25.4670, 91.8885],
+            "Mizoram": [23.1645, 92.9376],
+            "Tripura": [23.7466, 91.7483],
+            "Uttar Pradesh": [26.8467, 80.9462],
+            "Punjab": [31.1471, 75.3412],
+            "Haryana": [29.0588, 76.0856],
+            "Himachal Pradesh": [31.1048, 77.1734],
+            "Uttarakhand": [30.0668, 79.0193],
+            "Jammu & Kashmir": [33.7782, 76.5762],
+            "Ladakh": [34.2268, 77.5619]
+        };
+
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+        const searchResultsList = document.getElementById('search-results-list');
+        const disasterList = document.getElementById('disaster-list');
+
+        function fetchDisasters(lat, lng) {
+            // Placeholder for location-based fetching. Using dummy data for now.
+            const states = Object.keys(stateCoordinates);
+            let nearestState = null;
+            let minDistance = Infinity;
+
+            for (const state of states) {
+                const [s_lat, s_lng] = stateCoordinates[state];
+                const distance = Math.sqrt(Math.pow(lat - s_lat, 2) + Math.pow(lng - s_lng, 2));
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestState = state;
+                }
+            }
+
+            if (nearestState) {
+                const stateDisasters = disasters[nearestState];
+                renderDisasters(stateDisasters, disasterList);
+                document.getElementById('location').textContent = nearestState;
+                map.flyTo(stateCoordinates[nearestState], 7);
+                
+                // Remove existing popup and add new one
+                if (map.getPopup()) {
+                    map.closePopup();
+                }
+                const popupContent = `<div class="p-2">
+                                        <h4 class="font-bold text-lg text-gray-800">${nearestState}</h4>
+                                        <p class="text-sm text-gray-600">Click to view disaster information</p>
+                                      </div>`;
+                marker.bindPopup(popupContent).openPopup();
+            } else {
+                disasterList.innerHTML = '<p class="text-gray-500">No disaster data found for this location.</p>';
+                document.getElementById('location').textContent = 'Unknown';
+            }
+        }
+
+        function renderDisasters(disasterArray, element) {
+            element.innerHTML = '';
+            if (disasterArray && disasterArray.length > 0) {
+                disasterArray.forEach(d => {
+                    const li = document.createElement('li');
+                    li.className = 'bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200';
+                    li.innerHTML = `
+                        <h4 class="font-bold text-lg text-blue-700">${d.name}</h4>
+                        <p class="text-gray-600 mb-2"><span class="font-semibold">Type:</span> ${d.type}</p>
+                        <p class="text-gray-600 mb-2"><span class="font-semibold">Impact:</span> ${d.impact}</p>
+                        <p class="text-gray-600 mb-2"><span class="font-semibold">Relief:</span> ${d.relief}</p>
+                        <p class="text-gray-600 mb-2"><span class="font-semibold">Preparedness:</span> ${d.preparedness}</p>
+                        <div class="mt-3 flex space-x-2">
+                            <a href="${d.link}" target="_blank" class="text-blue-500 hover:text-blue-700 font-medium transition duration-200">More Info</a>
+                            <a href="${d.youtube}" target="_blank" class="text-red-500 hover:text-red-700 font-medium transition duration-200">Watch Video</a>
+                        </div>
+                    `;
+                    element.appendChild(li);
+                });
+            } else {
+                element.innerHTML = '<p class="text-gray-500">No disaster data available.</p>';
+            }
+        }
+
+        searchButton.addEventListener('click', () => {
+            const query = searchInput.value.toLowerCase();
+            const results = [];
+            const states = Object.keys(disasters);
+
+            states.forEach(state => {
+                const stateDisasters = disasters[state];
+                stateDisasters.forEach(d => {
+                    if (d.name.toLowerCase().includes(query) || d.type.toLowerCase().includes(query) || state.toLowerCase().includes(query)) {
+                        results.push({ state, disaster: d });
+                    }
+                });
+            });
+            renderSearchResults(results);
+        });
+
+        function renderSearchResults(results) {
+            searchResultsList.innerHTML = '';
+            if (results.length > 0) {
+                results.forEach(item => {
+                    const li = document.createElement('li');
+                    li.className = 'bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200';
+                    li.innerHTML = `
+                        <h4 class="font-bold text-lg text-blue-700">${item.disaster.name} (${item.state})</h4>
+                        <p class="text-gray-600 mb-2"><span class="font-semibold">Type:</span> ${item.disaster.type}</p>
+                        <p class="text-gray-600 mb-2"><span class="font-semibold">Impact:</span> ${item.disaster.impact}</p>
+                        <p class="text-gray-600 mb-2"><span class="font-semibold">Relief:</span> ${item.disaster.relief}</p>
+                        <p class="text-gray-600 mb-2"><span class="font-semibold">Preparedness:</span> ${item.disaster.preparedness}</p>
+                        <div class="mt-3 flex space-x-2">
+                            <a href="${item.disaster.link}" target="_blank" class="text-blue-500 hover:text-blue-700 font-medium transition duration-200">More Info</a>
+                            <a href="${item.disaster.youtube}" target="_blank" class="text-red-500 hover:text-red-700 font-medium transition duration-200">Watch Video</a>
+                        </div>
+                    `;
+                    searchResultsList.appendChild(li);
+                });
+            } else {
+                searchResultsList.innerHTML = '<p class="text-gray-500">No search results found.</p>';
+            }
+        }
+    </script>
+</body>
+</html>
